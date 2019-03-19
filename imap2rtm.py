@@ -134,7 +134,7 @@ def prepare_subject(message, flags, account):
     subject = message.get("Subject")
 
     # Remove Fwd/Re prefixes and @ char
-    subject = re.sub("re:|fwd:|@", "", sub, flags=re.IGNORECASE).strip()
+    subject = re.sub("re:|fwd:|@", "", subject, flags=re.IGNORECASE).strip()
 
     # Add account prefix if specified
     if account["subject_prefix"] is not None:
