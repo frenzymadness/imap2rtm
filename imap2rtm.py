@@ -4,6 +4,7 @@ from imapclient import IMAPClient
 import email
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import re
 import smtplib
 import ssl
 import sys
@@ -132,9 +133,8 @@ def prepare_subject(message, flags, account):
     """Prepares email subject which will be the task title in RTM"""
     subject = message.get("Subject")
 
-    # Remove Fwd and Re prefixes
-    for str_to_remove in "Fwd:", "Re:":
-        subject = subject.replace(str_to_remove, "").strip()
+    # Remove Fwd/Re prefixes and @ char
+    subject = re.sub("re:|fwd:|@", "", sub, flags=re.IGNORECASE).strip()
 
     # Add account prefix if specified
     if account["subject_prefix"] is not None:
