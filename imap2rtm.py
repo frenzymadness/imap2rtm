@@ -9,7 +9,7 @@ import smtplib
 import ssl
 import sys
 import traceback
-import xml
+from xml.etree import ElementTree
 
 conf = ConfigParser(allow_no_value=True)
 with open("config.ini") as config_file:
@@ -56,7 +56,10 @@ def get_ssl_context(account):
 
 
 def remove_html_tags(html):
-    return "".join(xml.etree.ElementTree.fromstring(html).itertext())
+    try:
+        return "".join(ElementTree.fromstring(html).itertext())
+    except Exception:
+        return None
 
 
 def mark_as_processed(server, messages_to_process, messages_with_flags):
@@ -123,10 +126,13 @@ def get_message_body(message):
                 else:
                     return ""
     else:
-        text = str(
-            message.get_payload(decode=True), message.get_content_charset()
-        )
-        return text.strip()
+        if message.get_content_charset() is not None:
+            text = str(
+                message.get_payload(decode=True), message.get_content_charset()
+            )
+            return text.strip()
+        else:
+            return None
 
 
 def prepare_subject(message, flags, account):
