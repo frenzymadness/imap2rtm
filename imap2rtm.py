@@ -244,7 +244,7 @@ def main():
                 server.login(account["login"], account["password"])
                 process_messages(server, account, imap_search[account_name])
         except Exception as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
+            _, _, exc_traceback = sys.exc_info()
             print(f"Error in {account_name}: {e}")
             traceback.print_tb(exc_traceback, file=sys.stderr)
         else:
