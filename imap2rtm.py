@@ -4,7 +4,6 @@ from imapclient import IMAPClient
 import email
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import json
 import re
 import smtplib
 import ssl
@@ -18,6 +17,11 @@ with open("config.ini") as config_file:
 
 accounts = [sec for sec in conf.sections() if sec.startswith("mail-")]
 smtp_server = conf[conf["general"]["smtp_server"]]
+
+# How far to go in past
+week_ago = datetime.now() - timedelta(days=7)
+week_ago_fmt = week_ago.strftime("%d-%b-%Y")
+imap_search = f'(SINCE "{week_ago_fmt}")'
 
 # Default flags from Thunderbird
 all_flags = {
@@ -35,45 +39,6 @@ important_flags = [
     all_flags["work"],  # transfer and remove flag
     all_flags["todo"],  # transfer and set green
 ]
-
-
-def imap_search_since():
-    """Returns dict {<account_name>: <imap_search_since>, …}.
-    Values are loaded from JSON file or 7 days by default"""
-
-    week_ago = datetime.now() - timedelta(days=7)
-    week_ago_fmt = week_ago.strftime("%d-%b-%Y")
-    imap_search = f'(SINCE "{week_ago_fmt}")'
-
-    # Default 7 days in past for all acounts
-    result = {account_name: imap_search for account_name in accounts}
-
-    try:
-        with open("last_visit.json") as last_visit_file:
-            last_visit = json.load(last_visit_file)
-    except Exception:
-        pass
-    else:
-        result.update(last_visit)
-    finally:
-        return result
-
-
-def set_last_visit(account_name):
-    today = datetime.now()
-    today_fmt = today.strftime("%d-%b-%Y")
-    last_visit_account = {account_name: f'(SINCE "{today_fmt}")'}
-
-    try:
-        with open("last_visit.json") as last_visit_file:
-            last_visit = json.load(last_visit_file)
-    except Exception:
-        last_visit = last_visit_account
-    else:
-        last_visit.update(last_visit_account)
-
-    with open("last_visit.json", mode="w") as last_visit_file:
-        json.dump(last_visit, last_visit_file)
 
 
 def get_ssl_context(account):
@@ -215,7 +180,7 @@ def send_task_to_rtm(subject, body, account):
         mailserver.send_message(message)
 
 
-def process_messages(server, account, imap_search):
+def process_messages(server, account):
     """Main function which process all messages from all servers
     and send them to RTM"""
     server.select_folder("INBOX")
@@ -232,8 +197,6 @@ def process_messages(server, account, imap_search):
 
 def main():
     """Logs into each IMAP account and run messages processing"""
-    imap_search = imap_search_since()
-
     for account_name in accounts:
         account = conf[account_name]
         ssl_context = get_ssl_context(account)
@@ -242,13 +205,11 @@ def main():
                 account["server"], ssl_context=ssl_context
             ) as server:
                 server.login(account["login"], account["password"])
-                process_messages(server, account, imap_search[account_name])
+                process_messages(server, account)
         except Exception as e:
             _, _, exc_traceback = sys.exc_info()
             print(f"Error in {account_name}: {e}")
             traceback.print_tb(exc_traceback, file=sys.stderr)
-        else:
-            set_last_visit(account_name)
 
 
 if __name__ == "__main__":
